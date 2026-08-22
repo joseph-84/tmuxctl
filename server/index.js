@@ -13,6 +13,16 @@ fs.mkdirSync(config.DATA_DIR, { recursive: true });
 
 const app = express();
 app.disable("x-powered-by");
+app.use((req, res, next) => {
+  // Hand-rolled instead of pulling in helmet for four headers: this serves
+  // one same-origin SPA with no third-party embeds, so there's nothing left
+  // for a CSP to meaningfully restrict beyond what these already cover —
+  // clickjacking (the login page) and MIME-sniffing.
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "same-origin");
+  next();
+});
 app.use(express.json());
 app.use(auth.sessionMiddleware);
 

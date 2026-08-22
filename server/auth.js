@@ -8,6 +8,7 @@ const roles = require("./roles");
 const osusers = require("./osusers");
 const activity = require("./activity");
 const presence = require("./presence");
+const loginThrottle = require("./loginThrottle");
 
 function pamAuthenticate(username, password) {
   return new Promise((resolve, reject) => {
@@ -29,6 +30,7 @@ const sessionMiddleware = session({
   cookie: {
     httpOnly: true,
     sameSite: "lax",
+    path: "/",
     // secure cookies require TLS in front of tmuxctl (e.g. nginx/caddy) —
     // see README "배포" section. Left off by default so plain-HTTP LAN use
     // (the common case for a single-box admin tool) isn't broken out of the box.
@@ -36,6 +38,13 @@ const sessionMiddleware = session({
     maxAge: 8 * 60 * 60 * 1000,
   },
 });
+
+if (process.env.TMUXCTL_SECURE_COOKIE !== "1") {
+  console.warn(
+    "[tmuxctl] TMUXCTL_SECURE_COOKIE is not set — the session cookie will be sent over plain HTTP. " +
+      "Fine for local/LAN use; put a TLS reverse proxy in front and set TMUXCTL_SECURE_COOKIE=1 before exposing this beyond a trusted network."
+  );
+}
 
 function currentUser(req) {
   if (!req.session || !req.session.user) return null;
@@ -87,12 +96,18 @@ function registerRoutes(app) {
     if (!osusers.USERNAME_RE.test(username)) {
       return res.status(401).json({ error: "인증 실패" });
     }
+    const lockedMs = loginThrottle.checkLocked(username);
+    if (lockedMs > 0) {
+      return res.status(429).json({ error: `로그인 시도가 너무 많습니다. ${Math.ceil(lockedMs / 60000)}분 후 다시 시도하세요.` });
+    }
     try {
       await pamAuthenticate(username, password);
     } catch {
+      loginThrottle.recordFailure(username);
       activity.record(username, "로그인 실패", "warn");
       return res.status(401).json({ error: "인증 실패" });
     }
+    loginThrottle.recordSuccess(username);
     const osUser = osusers.getUser(username);
     if (!osUser) {
       return res.status(401).json({ error: "인증 실패" });
