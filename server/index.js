@@ -7,9 +7,16 @@ const auth = require("./auth");
 const tmuxRoutes = require("./tmuxRoutes");
 const usersRoutes = require("./usersRoutes");
 const settingsRoutes = require("./settingsRoutes");
+const tmuxconf = require("./tmuxconf");
 const pty = require("./pty");
 
 fs.mkdirSync(config.DATA_DIR, { recursive: true });
+
+// Applied on every boot, not only when a setting is changed via the UI —
+// otherwise a session created before anyone ever opens 설정 never gets
+// `set -g status off` etc., and shows tmux's own status line instead of
+// (redundantly, alongside) the app's sidebar/tab chrome.
+tmuxconf.write(settingsRoutes.load());
 
 const app = express();
 app.disable("x-powered-by");

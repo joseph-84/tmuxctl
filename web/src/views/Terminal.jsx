@@ -35,10 +35,11 @@ function XTermPane({ session, readOnly }) {
     ws.binaryType = "arraybuffer";
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      const { cols, rows } = term;
-      ws.send(TAG_RESIZE + JSON.stringify({ cols, rows }));
+    const sendSize = () => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(TAG_RESIZE + JSON.stringify({ cols: term.cols, rows: term.rows }));
     };
+
+    ws.onopen = sendSize;
     ws.onmessage = (ev) => {
       const msg = typeof ev.data === "string" ? ev.data : new TextDecoder().decode(ev.data);
       if (msg[0] === TAG_DATA) term.write(msg.slice(1));
@@ -47,6 +48,24 @@ function XTermPane({ session, readOnly }) {
       term.write("\r\n\x1b[90m[연결 종료 — 세션은 백그라운드에서 계속 실행됩니다]\x1b[0m\r\n");
     };
 
+    // fit() measures cell size from whatever font is active right now. The
+    // very first fit above almost always runs before the JetBrains Mono
+    // webfont has finished loading, so it sizes the grid using the fallback
+    // font's (wider/narrower) metrics — tmux then lays out panes for that
+    // wrong column count, and once the real font swaps in every line is
+    // misaligned against it, which reads as the screen "breaking" into
+    // overlapping text. Re-fit and re-sync once the real font is ready.
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        try {
+          fit.fit();
+        } catch {
+          /* pane may already be gone */
+        }
+        sendSize();
+      });
+    }
+
     const dataDisposable = term.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(TAG_DATA + data);
     });
@@ -54,7 +73,7 @@ function XTermPane({ session, readOnly }) {
     const resizeObserver = new ResizeObserver(() => {
       try {
         fit.fit();
-        if (ws.readyState === WebSocket.OPEN) ws.send(TAG_RESIZE + JSON.stringify({ cols: term.cols, rows: term.rows }));
+        sendSize();
       } catch {
         /* ignore transient measurement errors during teardown */
       }
