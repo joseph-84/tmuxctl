@@ -81,7 +81,7 @@ function registerRoutes(app, requireAuth, requireRole) {
   });
 
   app.post("/api/sessions", requireAuth, canEdit, async (req, res) => {
-    const { name, cwd, command, template } = req.body || {};
+    const { name } = req.body || {};
     if (!tmuxctl.NAME_RE.test(name || "")) {
       return res.status(400).json({ error: "세션 이름 형식이 올바르지 않습니다." });
     }
@@ -89,14 +89,7 @@ function registerRoutes(app, requireAuth, requireRole) {
       return res.status(409).json({ error: "이미 존재하는 세션입니다." });
     }
     try {
-      await tmuxctl.newSession({ name, cwd, command });
-      if (template === "dev") {
-        await tmuxctl.splitWindow(name, 0, "h");
-        await tmuxctl.splitWindow(name, 0, "v");
-      } else if (template === "ops") {
-        await tmuxctl.newWindow(name, { command: "htop" });
-        await tmuxctl.selectWindow(name, 0);
-      }
+      await tmuxctl.newSession({ name, cwd: os.homedir() });
       activity.record(req.tmuxctlUser.username, `${req.tmuxctlUser.username} 이 ${name} 세션 생성`, "new");
       res.json(await sessionSummary({ name, attached: false, created: new Date().toISOString() }));
     } catch (err) {
