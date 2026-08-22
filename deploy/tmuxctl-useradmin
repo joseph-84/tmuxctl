@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# tmuxctl-useradmin — the ONLY privileged entry point the tmuxctl web app
+# calls into. Installed root:root 0755 at /usr/local/sbin/tmuxctl-useradmin
+# and invoked via `sudo -n` from server/sudoExec.js. /etc/sudoers.d/tmuxctl
+# whitelists exactly this path with NOPASSWD, so this script — not the
+# tmuxctl node process — is the actual trust boundary. Every argument is
+# re-validated here even though the caller already validates, because this
+# script must be safe to call with an arbitrary argv.
+#
+# Linux only: useradd/userdel/chpasswd/passwd -e don't exist on macOS (which
+# uses dscl/sysadminctl instead). The 사용자 관리 page assumes this wrapper,
+# so on a Mac host either leave that page unused or port this script to dscl.
+set -euo pipefail
+
+USERNAME_RE='^[a-z_][a-z0-9_-]{0,31}$'
+ALLOWED_SHELLS=(/bin/bash /bin/zsh /usr/bin/fish /usr/sbin/nologin)
+MIN_UID=1000
+
+die() { echo "error: $*" >&2; exit 1; }
+
+check_username() {
+  [[ "$1" =~ $USERNAME_RE ]] || die "invalid username: $1"
+}
+
+check_shell() {
+  local shell="$1"
+  for s in "${ALLOWED_SHELLS[@]}"; do
+    [[ "$shell" == "$s" ]] && return 0
+  done
+  die "shell not in allowlist: $shell"
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  add)
+    username="${2:-}"; shell="${3:-}"
+    check_username "$username"
+    check_shell "$shell"
+    id "$username" >/dev/null 2>&1 && die "user already exists: $username"
+    useradd -m -s "$shell" "$username"
+    password="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20)"
+    echo "${username}:${password}" | chpasswd
+    passwd -e "$username" >/dev/null   # force password change at first login
+    echo "$password"
+    ;;
+  del)
+    username="${2:-}"
+    check_username "$username"
+    uid="$(id -u "$username" 2>/dev/null)" || die "no such user: $username"
+    [[ "$uid" -ge "$MIN_UID" ]] || die "refusing to delete system account (uid $uid)"
+    userdel -r "$username"
+    ;;
+  *)
+    die "usage: tmuxctl-useradmin add <username> <shell> | del <username>"
+    ;;
+esac

@@ -1,0 +1,9 @@
+# Installed by deploy/install.sh as /etc/sudoers.d/tmuxctl (mode 0440).
+# Grants the tmuxctl service account passwordless sudo for EXACTLY ONE
+# command: the wrapper script below. It cannot run useradd/userdel/passwd
+# directly, and cannot pass it arbitrary arguments beyond what the wrapper
+# itself accepts and re-validates.
+#
+# __TMUXCTL_USER__ is replaced by install.sh with the account that actually
+# runs the tmuxctl node process (systemctl --user service owner).
+__TMUXCTL_USER__ ALL=(root) NOPASSWD: /usr/local/sbin/tmuxctl-useradmin

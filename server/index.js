@@ -1,0 +1,48 @@
+"use strict";
+const fs = require("fs");
+const path = require("path");
+const express = require("express");
+const config = require("./config");
+const auth = require("./auth");
+const tmuxRoutes = require("./tmuxRoutes");
+const usersRoutes = require("./usersRoutes");
+const settingsRoutes = require("./settingsRoutes");
+const pty = require("./pty");
+
+fs.mkdirSync(config.DATA_DIR, { recursive: true });
+
+const app = express();
+app.disable("x-powered-by");
+app.use(express.json());
+app.use(auth.sessionMiddleware);
+
+auth.registerRoutes(app);
+tmuxRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
+usersRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
+settingsRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
+
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.status || 500).json({ error: err.message || "internal error" });
+});
+
+if (fs.existsSync(config.WEB_DIST)) {
+  app.use(express.static(config.WEB_DIST));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api/") || req.path.startsWith("/ws/")) return next();
+    res.sendFile(path.join(config.WEB_DIST, "index.html"));
+  });
+} else {
+  app.get("/", (req, res) => {
+    res.status(200).send(
+      "tmuxctl API server is running, but web/dist is not built yet.\n" +
+        "Run `npm run setup:web && npm run build:web`, or `npm run dev:web` for local development."
+    );
+  });
+}
+
+const server = app.listen(config.PORT, () => {
+  console.log(`tmuxctl listening on http://0.0.0.0:${config.PORT}`);
+});
+
+pty.attach(server);

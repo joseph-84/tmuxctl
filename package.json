@@ -1,0 +1,27 @@
+{
+  "name": "tmuxctl",
+  "version": "0.1.0",
+  "description": "tmux를 웹에서 관리하는 콘솔 (Cockpit 스타일) — PAM 로그인, 실제 tmux 세션 제어, 시스템 사용자 관리",
+  "private": true,
+  "type": "commonjs",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev:server": "node --watch server/index.js",
+    "dev:web": "npm --prefix web run dev",
+    "build:web": "npm --prefix web run build",
+    "setup:web": "npm --prefix web install"
+  },
+  "dependencies": {
+    "authenticate-pam": "^1.0.5",
+    "cookie": "^0.6.0",
+    "cookie-signature": "^1.2.1",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

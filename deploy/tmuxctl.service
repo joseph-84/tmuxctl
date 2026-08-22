@@ -1,0 +1,24 @@
+# Installed by deploy/install.sh as ~/.config/systemd/user/tmuxctl.service
+# for the account that should own the tmuxctl process (a normal, non-root
+# user — see deploy/sudoers.d-tmuxctl for the one privileged operation it's
+# allowed to escalate).
+#
+# Enable + start:
+#   systemctl --user enable --now tmuxctl.service
+# Keep it running after you log out / over SSH disconnects:
+#   loginctl enable-linger "$USER"
+
+[Unit]
+Description=tmuxctl — web console for tmux
+After=network.target
+
+[Service]
+WorkingDirectory=__TMUXCTL_ROOT__
+ExecStart=/usr/bin/env node server/index.js
+Restart=on-failure
+RestartSec=2
+Environment=NODE_ENV=production
+Environment=PORT=4390
+
+[Install]
+WantedBy=default.target
