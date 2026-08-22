@@ -8,10 +8,12 @@ Cockpit 스타일로 tmux 세션을 웹에서 관리하는 콘솔. 로그인은 
 ## 요구 사항
 
 `node-pty`와 `authenticate-pam`은 네이티브 애드온이라 `npm install` 시 컴파일이
-필요합니다.
+필요합니다. `deploy/bootstrap.sh`가 아래 목록을 스스로 확인해서 없는 것만
+apt로 설치해주므로(Linux), 배포 시엔 이 절을 직접 따라 할 필요는 없습니다 —
+로컬 개발 환경을 손으로 맞출 때 참고하세요.
 
-- **Linux (Debian/Ubuntu 기준)**: `sudo apt-get install -y build-essential python3 libpam0g-dev tmux`
-- **macOS**: Xcode Command Line Tools (`xcode-select --install`), `brew install tmux`. PAM 헤더는 시스템에 기본 포함.
+- **Linux (Debian/Ubuntu 기준)**: `sudo apt-get install -y nodejs npm build-essential python3 libpam0g-dev tmux`
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`), `brew install tmux`. PAM 헤더는 시스템에 기본 포함. (`bootstrap.sh`는 Xcode CLT 설치 자체는 GUI 설치라 대신해주지 못하고, 없으면 안내만 하고 멈춥니다.)
 - **공통**: Node.js 18 이상.
 
 ## 아키텍처
@@ -57,13 +59,17 @@ git clone … tmuxmgmt && cd tmuxmgmt
 ```
 
 `bootstrap.sh`가 하는 일 (개별 실행하고 싶다면 순서대로):
-1. `npm install --omit=dev` — 백엔드 의존성 설치 + 네이티브 모듈 컴파일
-2. `npm run setup:web && npm run build:web` — 프런트엔드를 `web/dist`에 정적 빌드 (더 이상 vite dev 서버 필요 없음 — `server/index.js`가 직접 서빙)
-3. `./deploy/install.sh` — sudoers 화이트리스트 wrapper, PAM 서비스 파일, systemd 유닛 설치 (일반 유저로 실행, 내부에서 sudo 사용)
-4. `systemctl --user enable --now tmuxctl.service` + `loginctl enable-linger` — 로그아웃해도 계속 실행
+1. **사전 요구 사항 확인/설치** — `node`/`npm`/`tmux`/`gcc`/`python3`/`libpam0g-dev`가
+   있는지 확인하고, 없는 것만 골라 `sudo apt-get install`로 설치 (Linux). sudo 비밀번호를
+   물어볼 수 있습니다. macOS는 Xcode CLT/brew 확인만 하고 자동 설치는 tmux만 해줍니다.
+2. `npm install --omit=dev` — 백엔드 의존성 설치 + 네이티브 모듈 컴파일
+3. `npm run setup:web && npm run build:web` — 프런트엔드를 `web/dist`에 정적 빌드 (더 이상 vite dev 서버 필요 없음 — `server/index.js`가 직접 서빙)
+4. `./deploy/install.sh` — sudoers 화이트리스트 wrapper, PAM 서비스 파일, systemd 유닛 설치 (일반 유저로 실행, 내부에서 sudo 사용)
+5. **시작 프로그램 등록 여부를 물어봄** — `y`를 입력하면 `systemctl --user enable --now tmuxctl.service` + `loginctl enable-linger`까지 실행해서 로그인 시 자동 시작되게 설정합니다. `N`(기본값)이면 등록하지 않고, 나중에 직접 켜는 명령만 안내합니다. 터미널이 아닌 곳(CI 등)에서 실행되면 입력을 받을 수 없으므로 자동으로 등록하지 않습니다.
 
 이미 배포된 서버를 업데이트할 때도 `git pull && ./deploy/bootstrap.sh` 한 번이면
-됩니다 (멱등적으로 짜여 있음).
+됩니다 (멱등적으로 짜여 있음) — 이미 설치된 항목은 다시 건드리지 않고, 시작 프로그램
+등록 여부도 다시 물어봅니다.
 
 기본 포트는 4390 (`PORT` 환경변수로 변경). 외부에 노출한다면 반드시 nginx/caddy
 등으로 TLS를 앞단에 두고 `TMUXCTL_SECURE_COOKIE=1` 을 설정하세요 (평문 HTTP로는

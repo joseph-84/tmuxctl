@@ -19,11 +19,64 @@ if [[ "$(id -u)" -eq 0 ]]; then
   exit 1
 fi
 
-command -v node >/dev/null || { echo "node not found — see README '요구 사항'" >&2; exit 1; }
-command -v tmux >/dev/null || { echo "tmux not found — see README '요구 사항'" >&2; exit 1; }
+# ---- 1. prerequisites (README '요구 사항') ------------------------------
+ensure_prereqs_linux() {
+  local missing_bins=() apt_pkgs=()
 
-echo "==> node $(node -v), tmux $(tmux -V)"
+  command -v node >/dev/null || { missing_bins+=(node); apt_pkgs+=(nodejs); }
+  command -v npm >/dev/null || { missing_bins+=(npm); apt_pkgs+=(npm); }
+  command -v tmux >/dev/null || { missing_bins+=(tmux); apt_pkgs+=(tmux); }
+  command -v gcc >/dev/null || { missing_bins+=(gcc); apt_pkgs+=(build-essential); }
+  command -v python3 >/dev/null || { missing_bins+=(python3); apt_pkgs+=(python3); }
+  [[ -f /usr/include/security/pam_appl.h ]] || { missing_bins+=(libpam0g-dev); apt_pkgs+=(libpam0g-dev); }
 
+  if [[ ${#missing_bins[@]} -eq 0 ]]; then
+    echo "==> prerequisites already installed (node, npm, tmux, gcc, python3, libpam0g-dev)"
+    return
+  fi
+
+  echo "==> missing: ${missing_bins[*]}"
+  if ! command -v apt-get >/dev/null; then
+    echo "no apt-get on this system — install manually: ${missing_bins[*]} (see README '요구 사항')" >&2
+    exit 1
+  fi
+
+  # dedupe (build-essential/nodejs/npm can repeat if multiple bins map to one pkg)
+  local uniq_pkgs
+  uniq_pkgs=$(printf '%s\n' "${apt_pkgs[@]}" | sort -u | tr '\n' ' ')
+  echo "==> installing via apt: $uniq_pkgs (sudo password may be prompted)"
+  sudo apt-get update
+  # shellcheck disable=SC2086
+  sudo apt-get install -y $uniq_pkgs
+}
+
+ensure_prereqs_macos() {
+  if ! xcode-select -p >/dev/null 2>&1; then
+    echo "Xcode Command Line Tools not found. Run 'xcode-select --install', finish the GUI prompt, then re-run this script." >&2
+    exit 1
+  fi
+  if ! command -v tmux >/dev/null; then
+    if command -v brew >/dev/null; then
+      echo "==> installing tmux via brew"
+      brew install tmux
+    else
+      echo "tmux not found and Homebrew isn't installed — install tmux manually (see README '요구 사항')" >&2
+      exit 1
+    fi
+  fi
+  command -v node >/dev/null || { echo "node not found — install Node.js 18+ (see README '요구 사항')" >&2; exit 1; }
+  echo "==> prerequisites OK (Xcode CLT, tmux, node)"
+}
+
+case "$(uname -s)" in
+  Linux) ensure_prereqs_linux ;;
+  Darwin) ensure_prereqs_macos ;;
+  *) echo "unsupported OS: $(uname -s)" >&2; exit 1 ;;
+esac
+
+echo "==> node $(node -v), npm $(npm -v), tmux $(tmux -V)"
+
+# ---- 2. build ------------------------------------------------------------
 echo "==> installing backend dependencies (compiles node-pty, authenticate-pam)"
 npm install --omit=dev
 
@@ -31,12 +84,30 @@ echo "==> building frontend"
 npm run setup:web
 npm run build:web
 
+# ---- 3. host setup (sudoers wrapper, PAM service, systemd unit) ---------
 echo "==> host setup (sudoers wrapper, PAM service, systemd unit)"
 "$ROOT/deploy/install.sh"
 
-echo "==> enabling service"
-systemctl --user daemon-reload
-systemctl --user enable --now tmuxctl.service
-loginctl enable-linger "$(id -un)" || true
+# ---- 4. optionally enable as a startup service --------------------------
+if [[ "$(uname -s)" == "Linux" ]]; then
+  answer="n"
+  if [[ -t 0 ]]; then
+    read -r -p "==> 로그인 시 자동 시작되는 시작 프로그램(systemd --user)으로 등록할까요? [y/N] " answer
+  fi
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    systemctl --user daemon-reload
+    systemctl --user enable --now tmuxctl.service
+    loginctl enable-linger "$(id -un)" || true
+    echo "==> 등록 완료 — systemctl --user status tmuxctl.service"
+  else
+    systemctl --user daemon-reload
+    echo "==> 시작 프로그램에 등록하지 않았습니다. 지금 한 번만 실행하려면:"
+    echo "      systemctl --user start tmuxctl.service"
+    echo "    나중에 자동 시작을 켜려면:"
+    echo "      systemctl --user enable --now tmuxctl.service && loginctl enable-linger \$(id -un)"
+  fi
+else
+  echo "==> macOS에서는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니 'npm start'로 직접 실행하세요."
+fi
 
-echo "==> done — systemctl --user status tmuxctl.service"
+echo "==> done"
