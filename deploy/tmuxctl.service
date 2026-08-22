@@ -19,6 +19,14 @@ Restart=on-failure
 RestartSec=2
 Environment=NODE_ENV=production
 Environment=PORT=4390
+# The whole point of tmux is that sessions outlive whatever attached to
+# them — including this service. tmux properly daemonizes (double-fork +
+# setsid) but stays in this unit's cgroup, and systemd's default
+# KillMode=control-group signals every process in that cgroup on
+# stop/restart, killing the tmux server (and every session in it) right
+# along with the app. KillMode=process limits the kill to the tracked
+# main PID (node) only.
+KillMode=process
 
 [Install]
 WantedBy=default.target
