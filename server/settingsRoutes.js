@@ -4,7 +4,13 @@ const { readJson, writeJson } = require("./jsonStore");
 const tmuxconf = require("./tmuxconf");
 const activity = require("./activity");
 
-const DEFAULTS = { mouse: true, vikeys: true, bigHistory: true, autoAttach: false, notify: false };
+// mouse defaults off: tmux mouse-reporting intercepts click-drag itself, so
+// with it on, the ordinary "drag to select, Ctrl/Cmd+C to copy" a browser
+// user expects doesn't work — the selection resets instead of highlighting.
+// Off by default keeps normal browser text selection working out of the
+// box; users who want tmux's mouse-driven pane switching/scroll can still
+// flip this on in 설정.
+const DEFAULTS = { mouse: false, vikeys: true, bigHistory: true, autoAttach: false, notify: false };
 const LABELS = {
   mouse: { label: "마우스 모드", hint: "set -g mouse on" },
   vikeys: { label: "vi 키 바인딩", hint: "setw -g mode-keys vi" },
