@@ -10,6 +10,13 @@ const activity = require("./activity");
 const presence = require("./presence");
 const loginThrottle = require("./loginThrottle");
 
+// osusers.USERNAME_RE is deliberately strict (lowercase, no dots) because it
+// also gates useradd/userdel account *creation* on Linux. Login just needs
+// to accept whatever an *existing* OS account is actually named — and macOS
+// short names routinely contain dots (e.g. "junho.park") and mixed case,
+// which USERNAME_RE would silently reject before PAM ever saw the request.
+const LOGIN_USERNAME_RE = /^[A-Za-z0-9_.-]{1,64}$/;
+
 function pamAuthenticate(username, password) {
   return new Promise((resolve, reject) => {
     pam.authenticate(username, password, (err) => (err ? reject(err) : resolve()), {
@@ -93,7 +100,8 @@ function registerRoutes(app) {
     if (!username || !password) {
       return res.status(400).json({ error: "아이디와 비밀번호를 입력하세요." });
     }
-    if (!osusers.USERNAME_RE.test(username)) {
+    if (!LOGIN_USERNAME_RE.test(username)) {
+      console.error(`[tmuxctl] login rejected — username "${username}" doesn't match ${LOGIN_USERNAME_RE}`);
       return res.status(401).json({ error: "인증 실패" });
     }
     const lockedMs = loginThrottle.checkLocked(username);
