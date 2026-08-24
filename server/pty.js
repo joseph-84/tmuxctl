@@ -64,6 +64,7 @@ function attach(server) {
         env: process.env,
       });
     } catch (err) {
+      console.error(`[tmuxctl] pty spawn failed for session "${session}":`, err.message);
       ws.close(1011, "pty spawn failed: " + err.message);
       return;
     }
@@ -71,7 +72,8 @@ function attach(server) {
     pty.onData((data) => {
       if (ws.readyState === WebSocket.OPEN) ws.send(TAG_DATA + data);
     });
-    pty.onExit(() => {
+    pty.onExit(({ exitCode, signal }) => {
+      console.error(`[tmuxctl] pty for session "${session}" exited (code=${exitCode}, signal=${signal})`);
       if (ws.readyState === WebSocket.OPEN) ws.close();
     });
 
