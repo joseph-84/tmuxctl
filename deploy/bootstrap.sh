@@ -108,7 +108,20 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     echo "      systemctl --user enable --now tmuxctl.service && loginctl enable-linger \$(id -un)"
   fi
 else
-  echo "==> macOS에서는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니 'npm start'로 직접 실행하세요."
+  echo "==> macOS에서는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니 직접 실행해야 합니다."
+  echo ""
+  if [[ ! -f /etc/pam.d/tmuxctl ]]; then
+    echo "==> 로그인이 되려면 PAM 서비스 파일이 먼저 필요합니다 (한 번만, 아직 안 하셨다면):"
+    echo ""
+    echo "      sudo tee /etc/pam.d/tmuxctl >/dev/null <<'EOF'"
+    echo "      auth    required pam_opendirectory.so"
+    echo "      account required pam_opendirectory.so"
+    echo "      EOF"
+    echo ""
+  fi
+  echo "==> 실행:"
+  echo "      cd $ROOT && npm start"
+  echo "    기본 포트는 4390 → http://localhost:4390"
 fi
 
 echo "==> done"

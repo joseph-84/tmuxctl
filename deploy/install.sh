@@ -36,9 +36,17 @@ sudo visudo -cf /etc/sudoers.d/tmuxctl
 if [[ "$(uname -s)" == "Linux" ]]; then
   echo "==> installing PAM service file (Linux)"
   sudo install -o root -g "$ROOT_GROUP" -m 0644 "$ROOT/deploy/pam.d-tmuxctl" /etc/pam.d/tmuxctl
+elif [[ -f /etc/pam.d/tmuxctl ]]; then
+  echo "==> /etc/pam.d/tmuxctl already exists — leaving it alone"
 else
-  echo "==> macOS detected — see deploy/pam.d-tmuxctl for the pam_opendirectory.so variant"
-  echo "    you'll need to install it to /etc/pam.d/tmuxctl by hand (edit the auth/account lines)."
+  echo "==> macOS uses pam_opendirectory.so, not pam_unix.so — install.sh can't write"
+  echo "    outside /usr/local and /etc/sudoers.d without more prompts, so run this"
+  echo "    yourself once (needed for login to work):"
+  echo ""
+  echo "      sudo tee /etc/pam.d/tmuxctl >/dev/null <<'EOF'"
+  echo "      auth    required pam_opendirectory.so"
+  echo "      account required pam_opendirectory.so"
+  echo "      EOF"
 fi
 
 if [[ "$(uname -s)" == "Linux" ]]; then

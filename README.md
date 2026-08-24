@@ -75,8 +75,24 @@ git clone … tmuxmgmt && cd tmuxmgmt
 등으로 TLS를 앞단에 두고 `TMUXCTL_SECURE_COOKIE=1` 을 설정하세요 (평문 HTTP로는
 세션 쿠키가 전송되지 않도록 막는 스위치입니다).
 
-macOS는 `deploy/pam.d-tmuxctl` 상단 주석대로 `pam_opendirectory.so` 로 바꿔서
-`/etc/pam.d/tmuxctl` 에 직접 설치해야 합니다 (`install.sh` 가 자동으로 하지 않음).
+macOS는 PAM 서비스 파일을 `install.sh`가 자동으로 설치하지 않습니다 (Apple 쪽은
+`pam_unix.so`가 아니라 `pam_opendirectory.so`를 씀). `bootstrap.sh`/`install.sh`가
+끝난 뒤 아래를 한 번만 직접 실행하세요 (로그인 기능에 필요):
+
+```bash
+sudo tee /etc/pam.d/tmuxctl >/dev/null <<'EOF'
+auth    required pam_opendirectory.so
+account required pam_opendirectory.so
+EOF
+```
+
+macOS는 systemd가 없어서 시작 프로그램 자동 등록도 아직 지원하지 않습니다 —
+직접 실행하세요:
+
+```bash
+npm start
+```
+
 로그인·tmux 제어는 macOS에서도 그대로 동작하지만, **사용자 관리(사용자 생성/삭제)
 페이지는 Linux 전용**입니다 — `deploy/tmuxctl-useradmin` 이 `useradd`/`userdel`을
 쓰는데 macOS엔 없는 명령이라, 포팅하려면 `dscl`/`sysadminctl` 기반으로 새로
