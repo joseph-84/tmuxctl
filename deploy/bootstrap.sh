@@ -65,7 +65,8 @@ ensure_prereqs_macos() {
     fi
   fi
   command -v node >/dev/null || { echo "node not found — install Node.js 18+ (see README '요구 사항')" >&2; exit 1; }
-  echo "==> prerequisites OK (Xcode CLT, tmux, node)"
+  command -v npm >/dev/null || { echo "npm not found (node is installed without npm?) — install Node.js 18+ from nodejs.org, it bundles npm" >&2; exit 1; }
+  echo "==> prerequisites OK (Xcode CLT, tmux, node, npm)"
 }
 
 case "$(uname -s)" in

@@ -31,11 +31,16 @@ else
   echo "    you'll need to install it to /etc/pam.d/tmuxctl by hand (edit the auth/account lines)."
 fi
 
-echo "==> installing systemd --user unit"
-mkdir -p "$HOME/.config/systemd/user"
-sed "s#__TMUXCTL_ROOT__#$ROOT#" "$ROOT/deploy/tmuxctl.service" > "$HOME/.config/systemd/user/tmuxctl.service"
-systemctl --user daemon-reload
-echo "    to enable + start:  systemctl --user enable --now tmuxctl.service"
-echo "    to survive logout:  loginctl enable-linger $ME"
+if [[ "$(uname -s)" == "Linux" ]]; then
+  echo "==> installing systemd --user unit"
+  mkdir -p "$HOME/.config/systemd/user"
+  sed "s#__TMUXCTL_ROOT__#$ROOT#" "$ROOT/deploy/tmuxctl.service" > "$HOME/.config/systemd/user/tmuxctl.service"
+  systemctl --user daemon-reload
+  echo "    to enable + start:  systemctl --user enable --now tmuxctl.service"
+  echo "    to survive logout:  loginctl enable-linger $ME"
+else
+  echo "==> macOS에는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니,"
+  echo "    'npm start'로 직접 실행하거나 원하면 launchd .plist를 직접 작성하세요."
+fi
 
 echo "==> done"
