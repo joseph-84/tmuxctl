@@ -22,6 +22,10 @@ ROOT_GROUP="root"
 [[ "$(uname -s)" == "Linux" ]] || ROOT_GROUP="wheel"
 
 echo "==> installing sudo-whitelisted user-admin wrapper"
+# /usr/local/sbin doesn't exist by default on Apple Silicon Macs (Homebrew
+# lives under /opt/homebrew instead), so `install` fails with a cryptic
+# "No such file or directory" on its temp file — make sure the dir exists.
+sudo mkdir -p /usr/local/sbin
 sudo install -o root -g "$ROOT_GROUP" -m 0755 "$ROOT/deploy/tmuxctl-useradmin" /usr/local/sbin/tmuxctl-useradmin
 
 echo "==> installing sudoers rule for $ME"
