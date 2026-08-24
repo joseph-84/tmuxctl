@@ -10,7 +10,8 @@
     "dev:server": "node --watch server/index.js",
     "dev:web": "npm --prefix web run dev",
     "build:web": "npm --prefix web run build",
-    "setup:web": "npm --prefix web install"
+    "setup:web": "npm --prefix web install",
+    "postinstall": "find node_modules/node-pty/prebuilds -type f -name spawn-helper -exec chmod +x {} + 2>/dev/null || true"
   },
   "dependencies": {
     "authenticate-pam": "^1.0.5",

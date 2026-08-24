@@ -75,6 +75,17 @@ git clone … tmuxmgmt && cd tmuxmgmt
 등으로 TLS를 앞단에 두고 `TMUXCTL_SECURE_COOKIE=1` 을 설정하세요 (평문 HTTP로는
 세션 쿠키가 전송되지 않도록 막는 스위치입니다).
 
+macOS(특히 Apple Silicon)에서는 `node-pty`가 패키지에 미리 번들해 둔
+`spawn-helper` 바이너리의 실행 권한이 npm 설치 과정에서 유실되는 경우가 있어,
+터미널을 열자마자 `posix_spawnp failed.`로 끊기는 증상이 있을 수 있습니다
+(node-pty 쪽 패키징 이슈로 보이며, 저희 코드 문제는 아닙니다). `package.json`의
+`postinstall` 스크립트가 `npm install` 때마다 자동으로 실행 권한을 복구하니
+`bootstrap.sh`로 설치했다면 별도 조치가 필요 없습니다. 그래도 같은 에러가 나면:
+
+```bash
+chmod +x node_modules/node-pty/prebuilds/*/spawn-helper
+```
+
 macOS는 전용 PAM 서비스 파일을 만들지 않습니다 — SIP(System Integrity Protection)가
 `/etc/pam.d/`에 새 파일을 추가하는 것 자체를 막아서 (root로 `install`/`tee`를 해도
 "Operation not permitted"), `/etc/pam.d/tmuxctl` 같은 걸 만드는 게 애초에
