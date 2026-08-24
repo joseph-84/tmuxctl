@@ -15,8 +15,14 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ME="$(id -un)"
 
+# GID 0's group is named "root" on Linux but "wheel" on macOS/BSD — there is
+# no group literally named "root" there, so `-g root` fails with
+# "install: unknown group root".
+ROOT_GROUP="root"
+[[ "$(uname -s)" == "Linux" ]] || ROOT_GROUP="wheel"
+
 echo "==> installing sudo-whitelisted user-admin wrapper"
-sudo install -o root -g root -m 0755 "$ROOT/deploy/tmuxctl-useradmin" /usr/local/sbin/tmuxctl-useradmin
+sudo install -o root -g "$ROOT_GROUP" -m 0755 "$ROOT/deploy/tmuxctl-useradmin" /usr/local/sbin/tmuxctl-useradmin
 
 echo "==> installing sudoers rule for $ME"
 sed "s/__TMUXCTL_USER__/$ME/" "$ROOT/deploy/sudoers.d-tmuxctl" | sudo tee /etc/sudoers.d/tmuxctl >/dev/null
@@ -25,7 +31,7 @@ sudo visudo -cf /etc/sudoers.d/tmuxctl
 
 if [[ "$(uname -s)" == "Linux" ]]; then
   echo "==> installing PAM service file (Linux)"
-  sudo install -o root -g root -m 0644 "$ROOT/deploy/pam.d-tmuxctl" /etc/pam.d/tmuxctl
+  sudo install -o root -g "$ROOT_GROUP" -m 0644 "$ROOT/deploy/pam.d-tmuxctl" /etc/pam.d/tmuxctl
 else
   echo "==> macOS detected — see deploy/pam.d-tmuxctl for the pam_opendirectory.so variant"
   echo "    you'll need to install it to /etc/pam.d/tmuxctl by hand (edit the auth/account lines)."
