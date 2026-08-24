@@ -30,6 +30,26 @@ function getUser(username) {
   return readPasswd().find((u) => u.name === username) || null;
 }
 
+// getUser() only sees local accounts actually listed in /etc/passwd. That's
+// every account on Linux, but on macOS regular (Directory Services /
+// OpenDirectory) user accounts are NOT in /etc/passwd at all — only a
+// handful of system entries (root, daemon, nobody) are — so a PAM login
+// that just authenticated successfully would still get rejected here as
+// "user not found". `id` resolves through NSS/DirectoryServices either way,
+// so fall back to it for accounts /etc/passwd doesn't know about.
+function resolveUser(username) {
+  const local = getUser(username);
+  if (local) return local;
+  try {
+    const uid = parseInt(execFileSync("id", ["-u", username], { encoding: "utf8" }).trim(), 10);
+    const gid = parseInt(execFileSync("id", ["-g", username], { encoding: "utf8" }).trim(), 10);
+    if (Number.isNaN(uid)) return null;
+    return { name: username, uid, gid, gecos: "", home: "", shell: "" };
+  } catch {
+    return null;
+  }
+}
+
 function listHumanUsers(minUid) {
   return readPasswd().filter((u) => u.uid >= minUid && u.uid < 65534);
 }
@@ -43,4 +63,4 @@ function groupsOf(username) {
   }
 }
 
-module.exports = { assertUsername, USERNAME_RE, readPasswd, getUser, listHumanUsers, groupsOf };
+module.exports = { assertUsername, USERNAME_RE, readPasswd, getUser, resolveUser, listHumanUsers, groupsOf };

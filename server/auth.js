@@ -102,14 +102,16 @@ function registerRoutes(app) {
     }
     try {
       await pamAuthenticate(username, password);
-    } catch {
+    } catch (err) {
+      console.error(`[tmuxctl] PAM auth failed for ${username}:`, err && err.message ? err.message : err);
       loginThrottle.recordFailure(username);
       activity.record(username, "로그인 실패", "warn");
       return res.status(401).json({ error: "인증 실패" });
     }
     loginThrottle.recordSuccess(username);
-    const osUser = osusers.getUser(username);
+    const osUser = osusers.resolveUser(username);
     if (!osUser) {
+      console.error(`[tmuxctl] PAM auth OK for ${username} but no matching OS account (uid) found`);
       return res.status(401).json({ error: "인증 실패" });
     }
     req.session.regenerate((err) => {
