@@ -82,6 +82,20 @@ macOS는 `deploy/pam.d-tmuxctl` 상단 주석대로 `pam_opendirectory.so` 로 �
 쓰는데 macOS엔 없는 명령이라, 포팅하려면 `dscl`/`sysadminctl` 기반으로 새로
 작성해야 합니다.
 
+### 제거
+
+```bash
+./deploy/uninstall.sh
+```
+
+`install.sh`(및 `bootstrap.sh`의 4단계)가 설치한 것들을 되돌립니다: systemd
+서비스 중지/비활성화 및 유닛 파일 삭제, `/etc/sudoers.d/tmuxctl`,
+`/usr/local/sbin/tmuxctl-useradmin`, `/etc/pam.d/tmuxctl` 제거. linger 해제와
+`data/` 디렉터리(세션 메타데이터·역할·설정) 삭제는 실행 중 물어보며, 기본값은
+"아니오"입니다. `node`/`npm`/`tmux`/`build-essential` 등 apt로 설치됐을 수 있는
+시스템 패키지와 저장소 자체는 다른 용도로 쓰일 수 있어 건드리지 않으니, 필요하면
+직접 지우세요.
+
 ## 보안 메모
 
 - 특권 작업은 전부 `tmuxctl-useradmin` 한 곳으로 좁혀놨습니다. 이 스크립트를 고치면
