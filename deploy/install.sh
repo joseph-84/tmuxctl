@@ -36,17 +36,13 @@ sudo visudo -cf /etc/sudoers.d/tmuxctl
 if [[ "$(uname -s)" == "Linux" ]]; then
   echo "==> installing PAM service file (Linux)"
   sudo install -o root -g "$ROOT_GROUP" -m 0644 "$ROOT/deploy/pam.d-tmuxctl" /etc/pam.d/tmuxctl
-elif [[ -f /etc/pam.d/tmuxctl ]]; then
-  echo "==> /etc/pam.d/tmuxctl already exists — leaving it alone"
 else
-  echo "==> macOS uses pam_opendirectory.so, not pam_unix.so — install.sh can't write"
-  echo "    outside /usr/local and /etc/sudoers.d without more prompts, so run this"
-  echo "    yourself once (needed for login to work):"
-  echo ""
-  echo "      sudo tee /etc/pam.d/tmuxctl >/dev/null <<'EOF'"
-  echo "      auth    required pam_opendirectory.so"
-  echo "      account required pam_opendirectory.so"
-  echo "      EOF"
+  # SIP blocks creating new files under /etc/pam.d/ on macOS, even as root
+  # (Apple locked this down after PAM-module password-capture malware) — so
+  # there's no dedicated /etc/pam.d/tmuxctl there. server/config.js defaults
+  # PAM_SERVICE to macOS's built-in "login" service instead, which already
+  # authenticates via pam_opendirectory.so. Nothing to install here.
+  echo "==> macOS: reusing the built-in \"login\" PAM service (SIP blocks new /etc/pam.d/ files) — nothing to install"
 fi
 
 if [[ "$(uname -s)" == "Linux" ]]; then

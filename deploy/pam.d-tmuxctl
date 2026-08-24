@@ -1,14 +1,14 @@
-# Installed by deploy/install.sh as /etc/pam.d/tmuxctl (Linux).
+# Installed by deploy/install.sh as /etc/pam.d/tmuxctl (Linux only).
 # Standard local-account stack — authenticates against the same
 # /etc/passwd + /etc/shadow accounts a normal SSH/console login uses,
 # so there is no separate tmuxctl account database.
 #
-# macOS note: PAM service files live in /etc/pam.d/ too, but Apple's stack
-# uses pam_opendirectory.so instead of pam_unix.so. Replace the two "auth"/
-# "account" lines below with:
-#   auth    required pam_opendirectory.so
-#   account required pam_opendirectory.so
-# and skip the Linux-only pam_unix.so lines.
+# macOS note: this file is NOT installed there. SIP blocks creating new
+# files under /etc/pam.d/ even as root (Apple locked this down after
+# malware abused custom PAM modules to capture passwords), so there is no
+# /etc/pam.d/tmuxctl on macOS. server/config.js instead defaults
+# PAM_SERVICE to macOS's built-in "login" service, which already
+# authenticates via pam_opendirectory.so — see server/config.js.
 
 auth    required pam_unix.so
 account required pam_unix.so

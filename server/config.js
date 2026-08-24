@@ -10,7 +10,15 @@ module.exports = {
   DATA_DIR,
   PORT: parseInt(process.env.PORT || "4390", 10),
   SESSION_SECRET: process.env.TMUXCTL_SESSION_SECRET || "change-me-in-production-" + os.hostname(),
-  PAM_SERVICE: process.env.TMUXCTL_PAM_SERVICE || "tmuxctl",
+  // Linux: deploy/install.sh writes /etc/pam.d/tmuxctl (a dedicated service
+  // using pam_unix.so). macOS: SIP blocks creating new files under
+  // /etc/pam.d/ (added after PAM-module password-capture malware), even as
+  // root — `install` fails there with "Operation not permitted", not a
+  // plain permissions issue. So on macOS we reuse the "login" service
+  // Apple already ships, which authenticates via pam_opendirectory.so;
+  // authenticate-pam only ever calls pam_authenticate(), so "login"'s
+  // account/password/session lines are never invoked.
+  PAM_SERVICE: process.env.TMUXCTL_PAM_SERVICE || (os.platform() === "darwin" ? "login" : "tmuxctl"),
   // useradd/userdel/passwd are never called directly — only through this
   // root-owned wrapper script, installed by deploy/install.sh, and whitelisted
   // in /etc/sudoers.d/tmuxctl for exactly this path with NOPASSWD.
