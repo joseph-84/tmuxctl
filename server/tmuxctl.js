@@ -119,18 +119,20 @@ async function sessionExists(session) {
 async function newSession({ name, cwd, command }) {
   assertName(name, "session name");
   const args = ["new-session", "-d", "-s", name];
+  // tmux hands new panes the *server's* environment, captured once when the
+  // server itself first started — not the environment of whatever process
+  // ran this `tmux new-session` command. If the server happened to start
+  // with a stale/odd $PWD (e.g. launched by hand outside systemd, which
+  // normally pins a correct WorkingDirectory), every session's shell would
+  // inherit that stale PWD even though -c below sets the real cwd correctly
+  // (harmless cosmetically — `pwd`/prompt show it wrong, but file access is
+  // unaffected). `-e` sets a session environment variable *before* the
+  // initial pane spawns, so this covers that first pane too — a follow-up
+  // `set-environment` after creation would be too late for it.
+  if (cwd) args.push("-e", `PWD=${cwd}`);
   if (cwd) args.push("-c", cwd);
   if (command) args.push(command);
   await run(args);
-  // tmux hands each new pane the *server's* environment, captured once when
-  // the server itself first started — not the environment of whatever
-  // process ran this `tmux new-session` command. If the server happened to
-  // start with a stale/odd $PWD (e.g. launched by hand outside systemd,
-  // which normally pins a correct WorkingDirectory), every session's shell
-  // inherits that stale PWD even though -c above set the real cwd correctly
-  // (harmless cosmetically — `pwd`/prompt show it wrong, but file access is
-  // unaffected). Pin PWD per-session so this can't happen going forward.
-  if (cwd) await run(["set-environment", "-t", name, "PWD", cwd]);
 }
 
 async function killSession(session) {
