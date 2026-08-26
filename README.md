@@ -34,6 +34,10 @@ apt로 설치해주므로(Linux), 배포 시엔 이 절을 직접 따라 할 필
 - **역할**: `admin` / `operator` / `viewer` / `none` 4단계. 관리자/wheel/sudo
   그룹 멤버는 첫 로그인 시 자동으로 `admin`, 나머지는 기본 `none` (deny-by-default).
   `viewer` 는 터미널에 read-only 로 attach (키 입력이 서버에서 무시됨).
+- **tmux 마우스 모드는 기본 꺼짐**: 켜면 tmux가 드래그를 자체 마우스 리포팅으로
+  가로채서, 브라우저에서 흔히 하는 "드래그로 선택 → Ctrl/Cmd+C 복사"가 안 되고
+  선택 영역이 바로 풀립니다. 필요하면 설정 페이지에서 켤 수 있습니다
+  (`server/settingsRoutes.js`의 `DEFAULTS.mouse`).
 
 ## 로컬 개발
 
@@ -100,6 +104,35 @@ macOS는 systemd가 없어서 시작 프로그램 자동 등록도 아직 지원
 ```bash
 npm start
 ```
+
+터미널 창을 그냥 닫으면 안 됩니다 — macOS 기본 셸(zsh)은 터미널을 닫을 때 그 안의
+백그라운드 job에 SIGHUP을 보내서 `npm start`(node 프로세스)도 같이 죽습니다. tmux
+세션 자체(별도 데몬)는 안 죽지만, 웹 UI는 접속이 끊깁니다. 터미널을 닫아도 계속
+띄워두려면:
+
+```bash
+nohup npm start > ~/tmuxctl.log 2>&1 &
+disown
+```
+
+끌 때는 (nohup으로 띄웠든 `npm start &`로 띄웠든) PID로 찾기보다 포트나 이름으로:
+
+```bash
+lsof -ti tcp:4390 | xargs kill
+# 또는
+pkill -f "node server/index.js"
+```
+
+재부팅 시 자동 시작까지 원하면 launchd `.plist`가 필요한데(Linux의 systemd 유닛에
+해당), 아직 준비되어 있지 않습니다.
+
+macOS는 systemd가 없어서(위 참고) `WorkingDirectory`를 강제할 방법이 없다 보니,
+tmux 서버가 맨 처음 뜰 때의 `$PWD`가 어쩌다 이상한 값이면(예: 수동으로 여러 번
+띄우다 보면) 그 뒤에 만든 세션들의 셸이 `pwd`를 이상하게 보여줄 수 있습니다 —
+`tmux new-session -c` 로 실제 작업 디렉터리 자체는 항상 정확히 잡히고, 파일
+접근에는 전혀 영향이 없는 화면 표시 문제입니다. `tmuxctl.js`가 세션 생성 직후
+`tmux set-environment -t <세션> PWD <경로>` 로 세션 단위 환경변수를 다시 박아둬서,
+새로 만드는 세션에서는 이 문제가 재발하지 않습니다.
 
 로그인·tmux 제어는 macOS에서도 그대로 동작하지만, **사용자 관리(사용자 생성/삭제)
 페이지는 Linux 전용**입니다 — `deploy/tmuxctl-useradmin` 이 `useradd`/`userdel`을
