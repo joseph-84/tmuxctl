@@ -2,6 +2,7 @@
   "name": "tmuxctl",
   "version": "0.1.0",
   "description": "tmux를 웹에서 관리하는 콘솔 (Cockpit 스타일) — PAM 로그인, 실제 tmux 세션 제어, 시스템 사용자 관리",
+  "license": "MIT",
   "private": true,
   "type": "commonjs",
   "main": "server/index.js",
