@@ -22,6 +22,7 @@ function XTermPane({ session, readOnly }) {
       disableStdin: readOnly,
       cursorBlink: !readOnly,
       convertEol: true,
+      scrollback: 5000,
     });
     const fit = new FitAddon();
     term.loadAddon(fit);
@@ -29,6 +30,26 @@ function XTermPane({ session, readOnly }) {
     fit.fit();
     termRef.current = term;
     fitRef.current = fit;
+
+    // xterm.js forwards every key (PageUp/PageDown included) straight to the
+    // remote shell by default — there's no built-in "scroll my local
+    // scrollback" binding, unlike a native terminal app. Add it ourselves,
+    // but only outside the alternate screen buffer: full-screen apps (vim,
+    // less, htop, ...) expect PageUp/PageDown themselves and manage their
+    // own paging, so hijacking the keys there would break them.
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown") return true;
+      if (term.buffer.active.type === "alternate") return true;
+      if (event.key === "PageUp") {
+        term.scrollPages(-1);
+        return false;
+      }
+      if (event.key === "PageDown") {
+        term.scrollPages(1);
+        return false;
+      }
+      return true;
+    });
 
     const proto = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${proto}://${location.host}/ws/terminal?session=${encodeURIComponent(session)}`);
