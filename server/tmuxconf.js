@@ -22,6 +22,14 @@ function buildLines(opts) {
     // line inside the browser — this only affects sessions rendered
     // through tmuxctl, an SSH `tmux attach` still shows a blank bottom row.
     { text: "set -g status off", color: "#d6dbe4" },
+    // A bare PageUp (no prefix) normally does nothing in tmux outside
+    // copy-mode. #{alternate_on} is true exactly when the program running
+    // in the pane has switched to its own alternate screen (vim, less,
+    // htop, ...) — in that case let PageUp through untouched so the app's
+    // own paging still works; otherwise enter copy-mode and scroll up a
+    // page immediately, so scrolling a plain shell's output "just works"
+    // without knowing the copy-mode shortcut first.
+    { text: `bind-key -n PageUp if-shell -F "#{alternate_on}" "send-keys PageUp" "copy-mode -u"`, color: "#9fe6c2" },
   ];
   if (opts.notify) {
     lines.push({ text: "", color: "#d6dbe4" });
