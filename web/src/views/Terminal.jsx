@@ -29,6 +29,7 @@ function XTermPane({ session, readOnly }) {
     term.open(hostRef.current);
     fit.fit();
     termRef.current = term;
+    window.__term = term; // TEMP debug hook — remove once the scroll issue is diagnosed
     fitRef.current = fit;
 
     // xterm.js forwards every key (PageUp/PageDown included) straight to the
