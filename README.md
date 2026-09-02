@@ -34,10 +34,16 @@ apt로 설치해주므로(Linux), 배포 시엔 이 절을 직접 따라 할 필
 - **역할**: `admin` / `operator` / `viewer` / `none` 4단계. 관리자/wheel/sudo
   그룹 멤버는 첫 로그인 시 자동으로 `admin`, 나머지는 기본 `none` (deny-by-default).
   `viewer` 는 터미널에 read-only 로 attach (키 입력이 서버에서 무시됨).
-- **tmux 마우스 모드는 기본 꺼짐**: 켜면 tmux가 드래그를 자체 마우스 리포팅으로
-  가로채서, 브라우저에서 흔히 하는 "드래그로 선택 → Ctrl/Cmd+C 복사"가 안 되고
-  선택 영역이 바로 풀립니다. 필요하면 설정 페이지에서 켤 수 있습니다
-  (`server/settingsRoutes.js`의 `DEFAULTS.mouse`).
+- **tmux 마우스 모드는 기본 켜짐**: `tmux attach`로 붙는 모든 화면은 tmux 자신의
+  alternate screen buffer로 그려지기 때문에(네이티브 터미널도 동일) 브라우저 쪽에는
+  로컬 스크롤백이 없고, 휠 스크롤/PageUp이 뭔가 하려면 tmux 자신의 copy-mode를
+  거쳐야 합니다 — `mouse on`이 그걸 자동으로 연결해주고, 안에서 vim/less 같은 걸
+  돌릴 때도 그쪽 마우스 처리에 올바르게 넘겨줍니다. 대신 일반 드래그가 브라우저
+  네이티브 텍스트 선택이 아니라 tmux로 가로채지는데, macOS는 **Option+드래그**로
+  (Terminal.app/iTerm2와 동일한 관례) 로컬 선택을 강제해서 복사할 수 있습니다
+  (`macOptionClickForcesSelection`, `web/src/views/Terminal.jsx`). 필요하면 설정
+  페이지에서 마우스 모드를 끌 수도 있습니다 (`server/settingsRoutes.js`의
+  `DEFAULTS.mouse`) — 그러면 일반 드래그 선택은 되지만 휠 스크롤은 못 씁니다.
 
 ## 로컬 개발
 

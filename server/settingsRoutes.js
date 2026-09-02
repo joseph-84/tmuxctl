@@ -4,13 +4,20 @@ const { readJson, writeJson } = require("./jsonStore");
 const tmuxconf = require("./tmuxconf");
 const activity = require("./activity");
 
-// mouse defaults off: tmux mouse-reporting intercepts click-drag itself, so
-// with it on, the ordinary "drag to select, Ctrl/Cmd+C to copy" a browser
-// user expects doesn't work — the selection resets instead of highlighting.
-// Off by default keeps normal browser text selection working out of the
-// box; users who want tmux's mouse-driven pane switching/scroll can still
-// flip this on in 설정.
-const DEFAULTS = { mouse: false, vikeys: true, bigHistory: true, autoAttach: false, notify: false };
+// mouse defaults on. Every pane tmuxctl shows is attached via `tmux
+// attach`, which always renders through the *alternate* screen buffer for
+// tmux's own client display — true of every terminal, native or browser,
+// not something tmuxctl controls. That means there is no local scrollback
+// to fall back on here: wheel-scroll and PageUp only reach anything useful
+// by driving tmux's own copy-mode, which is exactly what tmux's mouse
+// option wires up automatically (and correctly hands off to an inner
+// full-screen app like vim/less/htop if *it* wants mouse events instead —
+// re-implementing that handoff ourselves would be fragile and likely to
+// break those tools). The one cost: with mouse on, an ordinary click-drag
+// is captured by tmux instead of the browser's native text selection —
+// see `macOptionClickForcesSelection` in web/src/views/Terminal.jsx for the
+// (standard-for-terminal-apps) modifier-drag workaround.
+const DEFAULTS = { mouse: true, vikeys: true, bigHistory: true, autoAttach: false, notify: false };
 const LABELS = {
   mouse: { label: "마우스 모드", hint: "set -g mouse on" },
   vikeys: { label: "vi 키 바인딩", hint: "setw -g mode-keys vi" },
