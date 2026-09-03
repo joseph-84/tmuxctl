@@ -34,6 +34,14 @@ apt로 설치해주므로(Linux), 배포 시엔 이 절을 직접 따라 할 필
 - **역할**: `admin` / `operator` / `viewer` / `none` 4단계. 관리자/wheel/sudo
   그룹 멤버는 첫 로그인 시 자동으로 `admin`, 나머지는 기본 `none` (deny-by-default).
   `viewer` 는 터미널에 read-only 로 attach (키 입력이 서버에서 무시됨).
+- **파일 탐색기**: 사이드바 하단, tmux 세션 목록 아래에 있고 접었다 펼 수 있음
+  (`server/filesRoutes.js`, `/api/files*`). 별도 샌드박스 루트 없이 tmuxctl
+  프로세스 계정이 읽고 쓸 수 있는 범위 그대로 노출함 — 터미널로 이미 할 수 있는
+  걸 클릭/드래그로 하게 해주는 것뿐이라, 권한 경계는 OS 파일 권한이 전부.
+  `viewer` 는 조회/다운로드만, `operator`/`admin` 은 업로드(드래그 앤 드롭
+  포함)·삭제도 가능. 업로드 파일명은 서버에서 `path.basename()` 으로 정리해서
+  경로 조작으로 대상 폴더 밖에 쓰는 걸 막음. 삭제는 파일만 가능 — 폴더 삭제는
+  실수 방지 차원에서 터미널에서 하도록 뺌.
 - **tmux 마우스 모드는 기본 켜짐**: `tmux attach`로 붙는 모든 화면은 tmux 자신의
   alternate screen buffer로 그려지기 때문에(네이티브 터미널도 동일) 브라우저 쪽에는
   로컬 스크롤백이 없고, 휠 스크롤/PageUp이 뭔가 하려면 tmux 자신의 copy-mode를

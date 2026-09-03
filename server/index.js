@@ -7,6 +7,7 @@ const auth = require("./auth");
 const tmuxRoutes = require("./tmuxRoutes");
 const usersRoutes = require("./usersRoutes");
 const settingsRoutes = require("./settingsRoutes");
+const filesRoutes = require("./filesRoutes");
 const tmuxconf = require("./tmuxconf");
 const pty = require("./pty");
 
@@ -37,6 +38,7 @@ auth.registerRoutes(app);
 tmuxRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
 usersRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
 settingsRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
+filesRoutes.registerRoutes(app, auth.requireAuth, auth.requireRole);
 
 app.use((err, req, res, next) => {
   console.error(err);
