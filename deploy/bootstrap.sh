@@ -108,13 +108,20 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     echo "      systemctl --user enable --now tmuxctl.service && loginctl enable-linger \$(id -un)"
   fi
 else
-  echo "==> macOS에서는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니 직접 실행해야 합니다."
-  echo "    로그인은 macOS 기본 PAM 서비스인 \"login\"을 재사용합니다 (SIP가 /etc/pam.d/에 새 파일"
-  echo "    만드는 걸 막아서, 별도 설정 파일 없이 바로 됩니다)."
-  echo ""
-  echo "==> 실행:"
-  echo "      cd $ROOT && npm start"
-  echo "    기본 포트는 4390 → http://localhost:4390"
+  answer="n"
+  if [[ -t 0 ]]; then
+    read -r -p "==> 로그인 상태와 무관하게 부팅 시 자동 시작되는 시작 프로그램(launchd)으로 등록할까요? [y/N] " answer
+  fi
+  if [[ "$answer" =~ ^[Yy]$ ]]; then
+    sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist
+    echo "==> 등록 완료 — 로그: $ROOT/data/tmuxctl.log"
+    echo "    http://localhost:4390"
+  else
+    echo "==> 시작 프로그램에 등록하지 않았습니다. 지금 한 번만 실행하려면:"
+    echo "      cd $ROOT && npm start"
+    echo "    나중에 자동 시작을 켜려면:"
+    echo "      sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist"
+  fi
 fi
 
 echo "==> done"

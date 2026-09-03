@@ -25,8 +25,9 @@ fi
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ME="$(id -un)"
 
-# ---- 1. systemd --user service ------------------------------------------
+# ---- 1. systemd --user service (Linux) / launchd daemon (macOS) ----------
 UNIT="$HOME/.config/systemd/user/tmuxctl.service"
+DAEMON_PLIST="/Library/LaunchDaemons/com.tmuxctl.app.plist"
 if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null; then
   if systemctl --user list-unit-files tmuxctl.service >/dev/null 2>&1 \
      && systemctl --user list-unit-files tmuxctl.service | grep -q tmuxctl.service; then
@@ -38,8 +39,12 @@ if [[ "$(uname -s)" == "Linux" ]] && command -v systemctl >/dev/null; then
     systemctl --user daemon-reload
     echo "==> removed $UNIT"
   fi
+elif [[ "$(uname -s)" != "Linux" ]] && [[ -f "$DAEMON_PLIST" ]]; then
+  echo "==> stopping + removing launchd daemon"
+  sudo launchctl unload -w "$DAEMON_PLIST" 2>/dev/null || true
+  sudo rm -f "$DAEMON_PLIST"
 else
-  echo "==> not Linux/systemd — skipping service removal (nothing to do there)"
+  echo "==> no service installed — nothing to do there"
 fi
 
 # loginctl linger affects the whole account, not just tmuxctl — only turn it

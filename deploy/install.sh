@@ -53,8 +53,21 @@ if [[ "$(uname -s)" == "Linux" ]]; then
   echo "    to enable + start:  systemctl --user enable --now tmuxctl.service"
   echo "    to survive logout:  loginctl enable-linger $ME"
 else
-  echo "==> macOS에는 systemd가 없습니다 — launchd plist는 아직 준비되어 있지 않으니,"
-  echo "    'npm start'로 직접 실행하거나 원하면 launchd .plist를 직접 작성하세요."
+  echo "==> installing launchd daemon"
+  # A LaunchAgent (~/Library/LaunchAgents) only reliably runs while $ME has
+  # an actual GUI session logged in — on a Mac reached only over SSH, that
+  # may never be true after a reboot. A LaunchDaemon starts at boot
+  # regardless of login state, which is what "survives SSH disconnects and
+  # reboots" needs; UserName in the plist still makes it run as $ME, not root.
+  NODE_BIN="$(command -v node)"
+  mkdir -p "$ROOT/data"
+  sed -e "s#__TMUXCTL_ROOT__#$ROOT#g" -e "s#__NODE_BIN__#$NODE_BIN#g" -e "s#__TMUXCTL_USER__#$ME#g" \
+    "$ROOT/deploy/com.tmuxctl.app.plist" | sudo tee /Library/LaunchDaemons/com.tmuxctl.app.plist >/dev/null
+  sudo chown root:"$ROOT_GROUP" /Library/LaunchDaemons/com.tmuxctl.app.plist
+  sudo chmod 0644 /Library/LaunchDaemons/com.tmuxctl.app.plist
+  echo "    to enable + start:  sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist"
+  echo "    logs:               $ROOT/data/tmuxctl.log"
+  echo "    (로그인 상태와 무관하게 부팅 시 자동 시작 — SSH 연결이 끊겨도 계속 돕니다)"
 fi
 
 echo "==> done"

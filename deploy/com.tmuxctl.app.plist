@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Installed by deploy/install.sh (root-owned, via sudo) as
+  /Library/LaunchDaemons/com.tmuxctl.app.plist — the macOS equivalent of
+  deploy/tmuxctl.service + `loginctl enable-linger` on Linux.
+
+  A LaunchAgent (~/Library/LaunchAgents) only reliably runs while that user
+  has an actual GUI session logged in — on a headless Mac accessed only over
+  SSH, it may not start at all after a reboot unless automatic login is
+  configured. A LaunchDaemon runs at boot regardless of any login state,
+  which is what "survives SSH disconnects and reboots" actually needs here.
+  UserName below makes it run as the normal account, not root — the whole
+  point of tmuxctl's privilege-separation design (see 배포 / 아키텍처 in
+  README.md) still holds.
+
+  Load + start:   sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist
+  Stop + unload:  sudo launchctl unload -w /Library/LaunchDaemons/com.tmuxctl.app.plist
+  Logs:           __TMUXCTL_ROOT__/data/tmuxctl.log
+
+  launchd daemons run with almost no inherited environment (no PATH from any
+  shell profile, so a bare "node" wouldn't resolve) — ProgramArguments uses
+  the absolute node path resolved at install time, and PATH below covers
+  what tmuxctl itself needs to find (tmux, id, useradd/userdel via the
+  sudoers-whitelisted wrapper).
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.tmuxctl.app</string>
+	<key>UserName</key>
+	<string>__TMUXCTL_USER__</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>__NODE_BIN__</string>
+		<string>server/index.js</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>__TMUXCTL_ROOT__</string>
+	<key>RunAtLoad</key>
+	<true/>
+	<!-- Restart on crash/non-zero exit, but not after a clean stop
+	     (launchctl unload) — same intent as systemd's Restart=on-failure. -->
+	<key>KeepAlive</key>
+	<dict>
+		<key>SuccessfulExit</key>
+		<false/>
+	</dict>
+	<key>StandardOutPath</key>
+	<string>__TMUXCTL_ROOT__/data/tmuxctl.log</string>
+	<key>StandardErrorPath</key>
+	<string>__TMUXCTL_ROOT__/data/tmuxctl.log</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>NODE_ENV</key>
+		<string>production</string>
+		<key>PORT</key>
+		<string>4390</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+	</dict>
+</dict>
+</plist>

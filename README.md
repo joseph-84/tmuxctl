@@ -83,7 +83,7 @@ git clone … tmuxmgmt && cd tmuxmgmt
 2. `npm install --omit=dev` — 백엔드 의존성 설치 + 네이티브 모듈 컴파일
 3. `npm run setup:web && npm run build:web` — 프런트엔드를 `web/dist`에 정적 빌드 (더 이상 vite dev 서버 필요 없음 — `server/index.js`가 직접 서빙)
 4. `./deploy/install.sh` — sudoers 화이트리스트 wrapper, PAM 서비스 파일, systemd 유닛 설치 (일반 유저로 실행, 내부에서 sudo 사용)
-5. **시작 프로그램 등록 여부를 물어봄** — `y`를 입력하면 `systemctl --user enable --now tmuxctl.service` + `loginctl enable-linger`까지 실행해서 로그인 시 자동 시작되게 설정합니다. `N`(기본값)이면 등록하지 않고, 나중에 직접 켜는 명령만 안내합니다. 터미널이 아닌 곳(CI 등)에서 실행되면 입력을 받을 수 없으므로 자동으로 등록하지 않습니다.
+5. **시작 프로그램 등록 여부를 물어봄** — `y`를 입력하면 Linux는 `systemctl --user enable --now tmuxctl.service` + `loginctl enable-linger`, macOS는 `sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist`까지 실행해서 로그인/SSH 연결과 무관하게 부팅 시 자동 시작되게 설정합니다. `N`(기본값)이면 등록하지 않고, 나중에 직접 켜는 명령만 안내합니다. 터미널이 아닌 곳(CI 등)에서 실행되면 입력을 받을 수 없으므로 자동으로 등록하지 않습니다.
 
 이미 배포된 서버를 업데이트할 때도 `git pull && ./deploy/bootstrap.sh` 한 번이면
 됩니다 (멱등적으로 짜여 있음) — 이미 설치된 항목은 다시 건드리지 않고, 시작 프로그램
@@ -112,17 +112,25 @@ macOS는 전용 PAM 서비스 파일을 만들지 않습니다 — SIP(System In
 `PAM_SERVICE` 기본값을 잡아줍니다 — 별도 설정 없이 됩니다. 다른 서비스를 쓰고 싶으면
 `TMUXCTL_PAM_SERVICE` 환경변수로 바꿀 수 있습니다.
 
-macOS는 systemd가 없어서 시작 프로그램 자동 등록도 아직 지원하지 않습니다 —
-직접 실행하세요:
+macOS는 systemd 대신 launchd로 시작 프로그램을 등록합니다 (`bootstrap.sh` 5단계에서
+물어보는 그거). **LaunchAgent가 아니라 LaunchDaemon**을 씁니다 — LaunchAgent
+(`~/Library/LaunchAgents`)는 그 계정이 실제 GUI 세션에 로그인돼 있어야 안정적으로
+동작하는데, SSH로만 접속하는 헤드리스 Mac은 재부팅 후 아무도 화면에 로그인하지
+않으면 아예 안 뜰 수 있습니다. LaunchDaemon은 로그인 상태와 무관하게 부팅 시
+시작되면서도 `UserName`을 지정해 root가 아니라 일반 계정으로 돕니다 —
+Linux의 `loginctl enable-linger`가 해주는 것과 같은 역할입니다.
 
 ```bash
-npm start
+sudo launchctl load -w /Library/LaunchDaemons/com.tmuxctl.app.plist   # 시작
+sudo launchctl unload -w /Library/LaunchDaemons/com.tmuxctl.app.plist # 중지
 ```
 
-터미널 창을 그냥 닫으면 안 됩니다 — macOS 기본 셸(zsh)은 터미널을 닫을 때 그 안의
-백그라운드 job에 SIGHUP을 보내서 `npm start`(node 프로세스)도 같이 죽습니다. tmux
-세션 자체(별도 데몬)는 안 죽지만, 웹 UI는 접속이 끊깁니다. 터미널을 닫아도 계속
-띄워두려면:
+로그는 `data/tmuxctl.log`에 쌓입니다. 등록하지 않고 그때그때 직접 실행하고
+싶다면 `npm start`로 되지만, **터미널 창을 그냥 닫으면 안 됩니다** — macOS 기본
+셸(zsh)은 터미널을 닫을 때(SSH 세션이 끊길 때도 마찬가지) 그 안의 백그라운드
+job에 SIGHUP을 보내서 `npm start`(node 프로세스)도 같이 죽습니다. tmux 세션
+자체(별도 데몬)는 안 죽지만, 웹 UI는 접속이 끊깁니다. 터미널을 닫아도 계속
+띄워두려면 (launchd 데몬을 안 쓸 때의 대안):
 
 ```bash
 nohup npm start > ~/tmuxctl.log 2>&1 &
@@ -136,9 +144,6 @@ lsof -ti tcp:4390 | xargs kill
 # 또는
 pkill -f "node server/index.js"
 ```
-
-재부팅 시 자동 시작까지 원하면 launchd `.plist`가 필요한데(Linux의 systemd 유닛에
-해당), 아직 준비되어 있지 않습니다.
 
 macOS는 systemd가 없어서(위 참고) `WorkingDirectory`를 강제할 방법이 없다 보니,
 tmux 서버가 맨 처음 뜰 때의 `$PWD`가 어쩌다 이상한 값이면(예: 수동으로 여러 번
@@ -160,7 +165,7 @@ tmux 서버가 맨 처음 뜰 때의 `$PWD`가 어쩌다 이상한 값이면(예
 ```
 
 `install.sh`(및 `bootstrap.sh`의 4단계)가 설치한 것들을 되돌립니다: systemd
-서비스 중지/비활성화 및 유닛 파일 삭제, `/etc/sudoers.d/tmuxctl`,
+서비스(Linux) 또는 launchd 데몬(macOS) 중지/제거, `/etc/sudoers.d/tmuxctl`,
 `/usr/local/sbin/tmuxctl-useradmin`, `/etc/pam.d/tmuxctl` 제거. linger 해제와
 `data/` 디렉터리(세션 메타데이터·역할·설정) 삭제는 실행 중 물어보며, 기본값은
 "아니오"입니다. `node`/`npm`/`tmux`/`build-essential` 등 apt로 설치됐을 수 있는
