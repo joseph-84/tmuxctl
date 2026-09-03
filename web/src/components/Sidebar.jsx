@@ -125,7 +125,7 @@ export default function Sidebar({ onCreate }) {
         <div style={{ flex: filesOpen ? 1 : "0 0 auto", display: "flex", flexDirection: "column", minHeight: 0, borderTop: "1px solid var(--border)" }}>
           <SectionHeader label="파일" open={filesOpen} onToggle={() => setFilesOpen((v) => !v)} />
           {filesOpen && (
-            <div style={{ flex: 1, minHeight: 0, padding: "0 8px 8px" }}>
+            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", padding: "0 8px 8px" }}>
               <FileExplorer />
             </div>
           )}
